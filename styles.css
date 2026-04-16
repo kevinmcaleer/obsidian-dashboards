@@ -74,6 +74,60 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  position: relative;
+}
+
+/* Resize handle sits on the right edge of each column (except the last),
+   overlapping into the grid gap so both neighbours are drag targets. */
+.dashboard-column-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -8px;
+  width: 12px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 5;
+  display: none;
+}
+
+.dashboard-root.is-edit-mode .dashboard-column-resize-handle {
+  display: block;
+}
+
+.dashboard-column-resize-handle::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--background-modifier-border);
+  border-radius: 1px;
+  transition: background 0.15s, width 0.15s;
+}
+
+.dashboard-column-resize-handle:hover::before,
+.dashboard-column-resize-handle.is-dragging::before {
+  background: var(--interactive-accent);
+  width: 3px;
+  left: 4.5px;
+}
+
+/* While resizing, disable text selection everywhere and force col-resize cursor */
+body.dashboard-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+body.dashboard-resizing * {
+  cursor: col-resize !important;
+}
+
+/* Hide handles on mobile (columns stack, nothing to resize) */
+@media (max-width: 768px) {
+  .dashboard-column-resize-handle {
+    display: none !important;
+  }
 }
 
 .dashboard-column-body {

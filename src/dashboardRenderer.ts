@@ -214,6 +214,20 @@ function renderColumn(
       emit();
     });
 
+    const fitBtn = toolbar.createEl('button', {
+      cls: 'dashboard-btn',
+      attr: { 'aria-label': 'Fit to available space' },
+    });
+    setIcon(fitBtn, 'move-horizontal');
+    fitBtn.addEventListener('click', () => {
+      // Sum the current displayed widths of all other columns; this column
+      // takes whatever's left (clamped to 1..12).
+      const widths = computeColumnWidths(row);
+      const othersTotal = widths.reduce((sum, w, i) => i === colIdx ? sum : sum + w, 0);
+      col.width = Math.max(1, Math.min(12, 12 - othersTotal));
+      emit();
+    });
+
     const editBtn = toolbar.createEl('button', {
       cls: 'dashboard-btn',
       attr: { 'aria-label': col.widget ? 'Edit widget' : 'Add widget' },
@@ -260,6 +274,95 @@ function renderColumn(
     const label = colEl.createDiv({ cls: 'dashboard-widget-label' });
     label.textContent = col.widget ? widgetDisplayName(col.widget) : 'Empty';
   }
+
+  // Resize handle on the right edge (not on the last column).
+  // Drags transfer units between this column and the next: left grows → right shrinks.
+  const isLastColumn = colIdx === row.columns.length - 1;
+  if (state.editMode && !isLastColumn) {
+    addResizeHandle(colEl, row, colIdx, emit);
+  }
+}
+
+function addResizeHandle(colEl: HTMLElement, row: Row, colIdx: number, emit: () => void): void {
+  const handle = colEl.createDiv({
+    cls: 'dashboard-column-resize-handle',
+    attr: { 'aria-label': 'Resize columns' },
+  });
+
+  handle.addEventListener('pointerdown', (e: PointerEvent) => {
+    e.preventDefault();
+    const rightColEl = colEl.nextElementSibling as HTMLElement | null;
+    const grid = colEl.parentElement as HTMLElement | null;
+    if (!rightColEl || !grid) return;
+
+    const rightCol = row.columns[colIdx + 1];
+    if (!rightCol) return;
+
+    // Grid column unit size in pixels (total width / 12). Close enough
+    // for responsive feedback; gap introduces tiny error that doesn't matter.
+    const gridRect = grid.getBoundingClientRect();
+    const unitPx = gridRect.width / 12;
+    const startX = e.clientX;
+
+    const readUnits = (el: HTMLElement): number =>
+      parseInt(el.style.getPropertyValue('--dashboard-col-width') || '1', 10) || 1;
+
+    const startLeft = readUnits(colEl);
+    const startRight = readUnits(rightColEl);
+    const total = startLeft + startRight;
+
+    handle.classList.add('is-dragging');
+    document.body.classList.add('dashboard-resizing');
+
+    const onMove = (ev: PointerEvent) => {
+      const deltaPx = ev.clientX - startX;
+      const deltaUnits = Math.round(deltaPx / unitPx);
+      let newLeft = startLeft + deltaUnits;
+      let newRight = startRight - deltaUnits;
+
+      // Clamp so both columns keep at least 1 unit
+      if (newLeft < 1) { newLeft = 1; newRight = total - 1; }
+      if (newRight < 1) { newRight = 1; newLeft = total - 1; }
+
+      colEl.setCssProps({ '--dashboard-col-width': String(newLeft) });
+      rightColEl.setCssProps({ '--dashboard-col-width': String(newRight) });
+
+      updateColumnUi(colEl, newLeft);
+      updateColumnUi(rightColEl, newRight);
+    };
+
+    const onUp = () => {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+      handle.classList.remove('is-dragging');
+      document.body.classList.remove('dashboard-resizing');
+
+      const finalLeft = readUnits(colEl);
+      const finalRight = readUnits(rightColEl);
+      // Only persist if something actually changed
+      if (finalLeft !== startLeft || finalRight !== startRight) {
+        row.columns[colIdx].width = finalLeft;
+        row.columns[colIdx + 1].width = finalRight;
+        emit();
+      }
+    };
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+  });
+}
+
+/**
+ * Sync the visible slider value and "N/12" label inside a column when its
+ * width changes via the resize handle (keeps the toolbar in lockstep).
+ */
+function updateColumnUi(colEl: HTMLElement, width: number): void {
+  const slider = colEl.querySelector<HTMLInputElement>('.dashboard-column-width');
+  if (slider) slider.value = String(width);
+  const label = colEl.querySelector<HTMLElement>('.dashboard-column-width-label');
+  if (label) label.textContent = `${width}/12`;
 }
 
 function emit(state: DashboardState, onChanged: DashboardChangedCallback): void {
