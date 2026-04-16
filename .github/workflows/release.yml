@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify release assets
+        run: |
+          test -f main.js || (echo "main.js not found" && exit 1)
+          test -f manifest.json || (echo "manifest.json not found" && exit 1)
+          test -f styles.css || (echo "styles.css not found" && exit 1)
+          echo "All release assets present"
+
+      - name: Verify version matches tag
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          MANIFEST_VERSION=$(node -e "console.log(require('./manifest.json').version)")
+          if [ "$TAG" != "$MANIFEST_VERSION" ]; then
+            echo "Tag ($TAG) does not match manifest version ($MANIFEST_VERSION)"
+            exit 1
+          fi
+          echo "Version $TAG verified"
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            main.js
+            manifest.json
+            styles.css
+          generate_release_notes: true

@@ -1,0 +1,21 @@
+{
+  "name": "dashboards",
+  "version": "1.0.0",
+  "description": "Dashboard layouts for Obsidian notes",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production",
+    "release": "node scripts/release.mjs",
+    "lint": "eslint src/"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.58.2",
+    "@typescript-eslint/parser": "^8.58.2",
+    "esbuild": "^0.21.0",
+    "eslint": "^10.2.0",
+    "obsidian": "latest",
+    "typescript": "^5.4.0"
+  }
+}
