@@ -100,8 +100,8 @@ export function renderDashboard(
  * space evenly (auto-layout). This gives the "12 → 6/6 → 4/4/4" behaviour.
  */
 function computeColumnWidths(row: Row): number[] {
-  const explicit = row.columns.map(c => typeof c.width === 'number' ? c.width : null);
-  const usedWidth = explicit.reduce((a, w) => a + (w ?? 0), 0);
+  const explicit: Array<number | null> = row.columns.map(c => typeof c.width === 'number' ? c.width : null);
+  const usedWidth: number = explicit.reduce<number>((a, w) => a + (w ?? 0), 0);
   const autoCount = explicit.filter(w => w === null).length;
 
   if (autoCount === 0) {
