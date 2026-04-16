@@ -1,7 +1,7 @@
 {
   "id": "dashboards",
   "name": "Dashboards",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minAppVersion": "1.10.0",
   "description": "Compose content from across your vault into a dashboard using a rows and columns layout, with charts, embeds, stats, and more.",
   "author": "Kevin",
