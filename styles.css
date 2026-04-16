@@ -10,9 +10,9 @@
 .dashboard-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   padding: 0 0 12px;
-  gap: 12px;
+  gap: 8px;
 }
 
 .dashboard-title {
@@ -20,11 +20,6 @@
   font-weight: 700;
   color: var(--text-normal);
   line-height: 1.3;
-}
-
-.dashboard-title--empty {
-  color: transparent;
-  font-size: 0;
 }
 
 .dashboard-mode-toggle {

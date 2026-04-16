@@ -29,13 +29,9 @@ export function renderDashboard(
 
   const root = container.createDiv({ cls: 'dashboard-root' });
 
-  // Header with title + mode toggle
+  // Header: pencil toggle on the left (avoids overlap with Obsidian's <> code button),
+  // title to the right of it.
   const header = root.createDiv({ cls: 'dashboard-header' });
-  if (config.title) {
-    header.createDiv({ cls: 'dashboard-title', text: config.title });
-  } else {
-    header.createDiv({ cls: 'dashboard-title dashboard-title--empty' });
-  }
   const toggle = header.createEl('button', {
     cls: 'dashboard-mode-toggle',
     attr: { 'aria-label': 'Toggle edit mode' },
@@ -46,6 +42,9 @@ export function renderDashboard(
     toggle.classList.toggle('is-active', state.editMode);
     rebuild();
   });
+  if (config.title) {
+    header.createDiv({ cls: 'dashboard-title', text: config.title });
+  }
 
   // Rows container
   const rowsContainer = root.createDiv({ cls: 'dashboard-rows' });
