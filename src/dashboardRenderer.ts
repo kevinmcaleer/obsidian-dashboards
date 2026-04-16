@@ -12,33 +12,47 @@ export interface DashboardState {
 }
 
 /**
- * Render a dashboard. Returns a cleanup function that should be
- * called before re-rendering.
+ * Persist session-only dashboard state (edit mode flag) across re-renders.
+ * When the YAML code block changes, Obsidian re-runs the processor with a
+ * fresh DOM, so without this the pencil icon would turn off after every edit.
+ * Keyed by sourcePath + line number of the code block start.
  */
+const stateStore = new Map<string, { editMode: boolean }>();
+
 export function renderDashboard(
   container: HTMLElement,
   config: DashboardConfig,
   app: App,
   sourcePath: string,
   component: Component,
+  stateKey: string,
   onChanged: DashboardChangedCallback,
 ): void {
   container.empty();
 
-  const state: DashboardState = { config, editMode: false };
+  const saved = stateStore.get(stateKey);
+  const state: DashboardState = {
+    config,
+    editMode: saved?.editMode ?? false,
+  };
+
+  const persist = () => {
+    stateStore.set(stateKey, { editMode: state.editMode });
+  };
 
   const root = container.createDiv({ cls: 'dashboard-root' });
 
-  // Header: pencil toggle on the left (avoids overlap with Obsidian's <> code button),
-  // title to the right of it.
+  // Header: pencil toggle on the left, title to its right.
   const header = root.createDiv({ cls: 'dashboard-header' });
   const toggle = header.createEl('button', {
     cls: 'dashboard-mode-toggle',
     attr: { 'aria-label': 'Toggle edit mode' },
   });
   setIcon(toggle, 'pencil');
+  if (state.editMode) toggle.classList.add('is-active');
   toggle.addEventListener('click', () => {
     state.editMode = !state.editMode;
+    persist();
     toggle.classList.toggle('is-active', state.editMode);
     rebuild();
   });
@@ -46,20 +60,19 @@ export function renderDashboard(
     header.createDiv({ cls: 'dashboard-title', text: config.title });
   }
 
-  // Rows container
   const rowsContainer = root.createDiv({ cls: 'dashboard-rows' });
 
-  // Add row button (only in edit mode)
+  // Add row button (only visible in edit mode via CSS)
   const addRowBtn = root.createEl('button', { cls: 'dashboard-add-row', text: '+ Add row' });
   addRowBtn.addEventListener('click', () => {
-    state.config.rows.push({ columns: [{ width: 12 }] });
+    state.config.rows.push({ columns: [{}] }); // auto-width column (becomes 12)
     emit(state, onChanged);
-    rebuild();
   });
 
   const emitAndRebuild = () => {
     emit(state, onChanged);
-    rebuild();
+    // Note: emit writes YAML to file → Obsidian re-renders the code block,
+    // which calls renderDashboard again. No need to call rebuild() here.
   };
 
   function rebuild(): void {
@@ -81,6 +94,26 @@ export function renderDashboard(
   rebuild();
 }
 
+/**
+ * Compute the display width for each column in a row.
+ * Columns with an explicit `width` use it; the rest share the remaining
+ * space evenly (auto-layout). This gives the "12 → 6/6 → 4/4/4" behaviour.
+ */
+function computeColumnWidths(row: Row): number[] {
+  const explicit = row.columns.map(c => typeof c.width === 'number' ? c.width : null);
+  const usedWidth = explicit.reduce((a, w) => a + (w ?? 0), 0);
+  const autoCount = explicit.filter(w => w === null).length;
+
+  if (autoCount === 0) {
+    return explicit.map(w => Math.max(1, Math.min(12, w ?? 12)));
+  }
+
+  const remaining = Math.max(autoCount, 12 - usedWidth);
+  const autoWidth = Math.max(1, Math.floor(remaining / autoCount));
+
+  return explicit.map(w => w !== null ? Math.max(1, Math.min(12, w)) : autoWidth);
+}
+
 function renderRow(
   parent: HTMLElement,
   row: Row,
@@ -97,7 +130,6 @@ function renderRow(
     rowEl.setCssProps({ '--dashboard-row-height': `${row.height}px` });
   }
 
-  // Row toolbar (edit mode only)
   if (state.editMode) {
     const toolbar = rowEl.createDiv({ cls: 'dashboard-row-toolbar' });
 
@@ -116,7 +148,7 @@ function renderRow(
 
     const addColBtn = toolbar.createEl('button', { cls: 'dashboard-btn', text: '+ Column' });
     addColBtn.addEventListener('click', () => {
-      row.columns.push({ width: 6 });
+      row.columns.push({}); // auto-width so existing columns redistribute
       emit();
     });
 
@@ -132,9 +164,10 @@ function renderRow(
   }
 
   const grid = rowEl.createDiv({ cls: 'dashboard-row-grid' });
+  const widths = computeColumnWidths(row);
 
   row.columns.forEach((col, colIdx) => {
-    renderColumn(grid, col, row, colIdx, state, app, sourcePath, component, emit);
+    renderColumn(grid, col, row, colIdx, widths[colIdx], state, app, sourcePath, component, emit);
   });
 }
 
@@ -143,6 +176,7 @@ function renderColumn(
   col: Column,
   row: Row,
   colIdx: number,
+  displayedWidth: number,
   state: DashboardState,
   app: App,
   sourcePath: string,
@@ -150,10 +184,8 @@ function renderColumn(
   emit: () => void,
 ): void {
   const colEl = parent.createDiv({ cls: 'dashboard-column' });
-  const width = col.width ?? Math.floor(12 / Math.max(1, row.columns.length));
-  colEl.setCssProps({ '--dashboard-col-width': String(width) });
+  colEl.setCssProps({ '--dashboard-col-width': String(displayedWidth) });
 
-  // Column toolbar (edit mode only)
   if (state.editMode) {
     const toolbar = colEl.createDiv({ cls: 'dashboard-column-toolbar' });
 
@@ -163,13 +195,24 @@ function renderColumn(
       type: 'range',
       cls: 'dashboard-column-width',
       attr: { min: '1', max: '12', step: '1' },
-      value: String(width),
+      value: String(displayedWidth),
     });
+    const widthLabel = toolbar.createEl('span', {
+      cls: 'dashboard-column-width-label',
+      text: `${displayedWidth}/12`,
+    });
+
+    // Live preview: update the CSS var and label as the user drags
+    widthSlider.addEventListener('input', () => {
+      const v = parseInt(widthSlider.value, 10);
+      colEl.setCssProps({ '--dashboard-col-width': String(v) });
+      widthLabel.textContent = `${v}/12`;
+    });
+    // Persist only on release (avoids thrashing the YAML during drag)
     widthSlider.addEventListener('change', () => {
       col.width = parseInt(widthSlider.value, 10);
       emit();
     });
-    toolbar.createEl('span', { cls: 'dashboard-column-width-label', text: `${width}/12` });
 
     const editBtn = toolbar.createEl('button', {
       cls: 'dashboard-btn',

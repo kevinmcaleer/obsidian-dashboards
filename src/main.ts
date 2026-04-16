@@ -40,7 +40,12 @@ export default class DashboardsPlugin extends Plugin {
     const component = new Component();
     component.load();
 
-    renderDashboard(el, config, this.app, ctx.sourcePath, component, (newYaml) => {
+    // Key used to persist session-only UI state (edit mode) across re-renders.
+    // When the YAML changes, Obsidian re-runs this processor with a new DOM.
+    const sectionInfo = ctx.getSectionInfo(el);
+    const stateKey = `${ctx.sourcePath}:${sectionInfo?.lineStart ?? 0}`;
+
+    renderDashboard(el, config, this.app, ctx.sourcePath, component, stateKey, (newYaml) => {
       void this.updateCodeBlock(ctx, el, newYaml);
     });
 
