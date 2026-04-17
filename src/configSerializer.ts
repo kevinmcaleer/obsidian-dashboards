@@ -81,7 +81,11 @@ function parseWidget(raw: unknown): Widget | null {
       return {
         type: 'stat',
         label: typeof w.label === 'string' ? w.label : '',
-        value: typeof w.value === 'string' ? w.value : String(w.value ?? ''),
+        value: typeof w.value === 'string'
+          ? w.value
+          : (typeof w.value === 'number' || typeof w.value === 'boolean')
+            ? String(w.value)
+            : '',
         trend: typeof w.trend === 'string' ? w.trend : undefined,
         icon: typeof w.icon === 'string' ? w.icon : undefined,
       };

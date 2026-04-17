@@ -121,7 +121,7 @@ export class WidgetEditorModal extends Modal {
     if (w.chart) {
       new Setting(this.body)
         .setName('Chart YAML')
-        .setDesc('Bases-chart config: type, sql, title, colors, etc.')
+        .setDesc('Bases-chart config: type, SQL, title, colors, etc.')
         .addTextArea((ta) => {
           ta.setValue(stringifyYaml(w.chart).trimEnd()).onChange((val) => {
             try {
@@ -151,7 +151,7 @@ export class WidgetEditorModal extends Modal {
     const w = this.widget;
     new Setting(this.body)
       .setName('Target')
-      .setDesc('Wikilink to the note or section to transclude, e.g. "[[Weekly summary]]"')
+      .setDesc('Wikilink to the note or section to transclude, e.g. "[[weekly summary]]"')
       .addText((t) => {
         t.setValue(w.target).onChange((val) => { w.target = val; });
         t.inputEl.addClass('dashboard-widget-editor-input');
@@ -170,7 +170,7 @@ export class WidgetEditorModal extends Modal {
     new Setting(this.body).setName('Trend').setDesc('Optional, e.g. "+3" or "-5%"').addText((t) => {
       t.setValue(w.trend || '').onChange((val) => { w.trend = val || undefined; });
     });
-    new Setting(this.body).setName('Icon').setDesc('Optional Lucide icon name').addText((t) => {
+    new Setting(this.body).setName('Icon').setDesc('Optional icon name').addText((t) => {
       t.setValue(w.icon || '').onChange((val) => { w.icon = val || undefined; });
     });
   }

@@ -63,7 +63,7 @@ export function renderDashboard(
   const rowsContainer = root.createDiv({ cls: 'dashboard-rows' });
 
   // Add row button (only visible in edit mode via CSS)
-  const addRowBtn = root.createEl('button', { cls: 'dashboard-add-row', text: '+ Add row' });
+  const addRowBtn = root.createEl('button', { cls: 'dashboard-add-row', text: '+ add row' });
   addRowBtn.addEventListener('click', () => {
     state.config.rows.push({ columns: [{}] }); // auto-width column (becomes 12)
     emit(state, onChanged);
@@ -146,7 +146,7 @@ function renderRow(
       emit();
     });
 
-    const addColBtn = toolbar.createEl('button', { cls: 'dashboard-btn', text: '+ Column' });
+    const addColBtn = toolbar.createEl('button', { cls: 'dashboard-btn', text: '+ column' });
     addColBtn.addEventListener('click', () => {
       row.columns.push({}); // auto-width so existing columns redistribute
       emit();
@@ -258,7 +258,7 @@ function renderColumn(
   } else {
     const empty = body.createDiv({ cls: 'dashboard-column-empty' });
     if (state.editMode) {
-      const addBtn = empty.createEl('button', { cls: 'dashboard-add-widget-btn', text: '+ Add widget' });
+      const addBtn = empty.createEl('button', { cls: 'dashboard-add-widget-btn', text: '+ add widget' });
       addBtn.addEventListener('click', () => {
         new WidgetEditorModal(app, undefined, (widget: Widget) => {
           col.widget = widget;
@@ -292,7 +292,7 @@ function addResizeHandle(colEl: HTMLElement, row: Row, colIdx: number, emit: () 
   handle.addEventListener('pointerdown', (e: PointerEvent) => {
     e.preventDefault();
     const rightColEl = colEl.nextElementSibling as HTMLElement | null;
-    const grid = colEl.parentElement as HTMLElement | null;
+    const grid = colEl.parentElement;
     if (!rightColEl || !grid) return;
 
     const rightCol = row.columns[colIdx + 1];

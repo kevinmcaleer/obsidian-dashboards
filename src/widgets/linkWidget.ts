@@ -25,6 +25,6 @@ export function renderLinkWidget(container: HTMLElement, widget: LinkWidget, app
 
   card.addEventListener('click', (e) => {
     e.preventDefault();
-    app.workspace.openLinkText(target, '', false);
+    void app.workspace.openLinkText(target, '', false);
   });
 }
